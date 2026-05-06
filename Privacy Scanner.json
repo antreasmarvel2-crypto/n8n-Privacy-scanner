@@ -1,0 +1,378 @@
+{
+  "name": "Privacy Scanner",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3eb3c5fb-a966-489a-8a63-80b31b64f3f9",
+      "name": "When chat message received",
+      "webhookId": "546917e0-2b16-4054-9ffe-1149c91805bb"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a privacy analysis assistant.\n\nAnalyze the following website scan results in JSON format.\n\nClassify the overall privacy risk as:\n- Low\n- Medium\n- High\n\nExplain the findings in simple, non-technical language so an average website owner can understand.\n\nFocus on:\n- trackers\n- third-party domains\n- cookies\n- fingerprinting\n- suspicious requests\n\nWebsite Scan Results:\n{{ JSON.stringify($node[\"Clean Code\"].json) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "4b53d8d5-4d38-457a-9a00-e55a9dadda80",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        224
+      ],
+      "id": "b5fd0b6f-3962-4fbb-a56f-80e31278dd6d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "B3R3atBKmMdKln1t",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1360,
+        224
+      ],
+      "id": "0d3d6f6e-6240-4995-90cd-606a445851c0",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ae076170-1172-4ea1-8c0f-527bb78ee958",
+              "name": "Website_url",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "7dbc43e7-b2d4-4b94-8f83-54ca2b306aed",
+              "name": "chatInput",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        0
+      ],
+      "id": "0fdab5ad-19de-4e21-b828-27dbcaadb849",
+      "name": "Store website Url"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://urlscan.io/api/v1/scan/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "urlScanIoApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.Website_url }}\",\n  \"visibility\": \"public\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "886dbadf-af4d-404d-ac53-0d109d2a5da2",
+      "name": "Website Privacy Scan",
+      "credentials": {
+        "urlScanIoApi": {
+          "id": "k0gD9CybmwDouA1D",
+          "name": "urlscan.io account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.result_url.replace('urlscan.io/result','urlscan.io/api/v1/result') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        912,
+        0
+      ],
+      "id": "dbb0762d-7ded-4748-958b-7d17af0cbe5a",
+      "name": "Get scan results"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "48e330df-28b7-4e15-8f50-338ffa526022",
+              "name": "report",
+              "value": "={{$json.output}} ",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1584,
+        0
+      ],
+      "id": "53a1448d-3de2-43a3-a93d-a7024f5bfe6e",
+      "name": "Generate Privacy Report"
+    },
+    {
+      "parameters": {
+        "message": "={{$json.report}} ",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        0
+      ],
+      "id": "0554a07c-4329-4ad5-a7b3-1948bcefa744",
+      "name": "Respond to Chat",
+      "webhookId": "41d44d89-e5b4-4bc0-818a-8079221c5f5b"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        0
+      ],
+      "id": "7305f434-0ead-49e0-b167-6a5fdf3faac7",
+      "name": "Wait for scan completion",
+      "webhookId": "a32ef5e5-0316-4d9a-8f18-991252ebf973"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a51cb360-0d22-4574-8b4c-8cbee95dd865",
+              "name": "scan_id",
+              "value": "={{$json.uuid}} ",
+              "type": "string"
+            },
+            {
+              "id": "535d52ce-c2f5-4242-b429-f95d96149446",
+              "name": "result_url",
+              "value": "={{ $json.result }}",
+              "type": "string"
+            },
+            {
+              "id": "533cfb3f-f45a-48f4-9646-999ae653e63b",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        0
+      ],
+      "id": "bf295847-026e-4383-9877-9f5808415fc2",
+      "name": "store scan ID"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const scan = $json;\nconst data = scan.data || {};\n\nconst cleaned = {\n  page_info: {\n    url: scan.page?.url || null,\n    domain: scan.page?.domain || null,\n    ip: scan.page?.ip || null,\n    country: scan.page?.country || null,\n    title: scan.page?.title || null,\n    server: scan.page?.server || null\n  },\n  security_verdict: scan.verdicts || {},\n  statistics: {\n    total_requests: (data.requests || []).length,\n    unique_domains: scan.lists?.domains?.length || 0,\n    data_length: scan.stats?.data_length || 0\n  },\n  external_resources: {\n    domains: scan.lists?.domains?.slice(0,20) || [],\n    ips: scan.lists?.ips?.slice(0,20) || [],\n    urls: scan.lists?.urls?.slice(0,20) || []\n  },\n  scan_metadata: {\n    scan_time: scan.task?.time || null,\n    visibility: scan.task?.visibility || null,\n    method: scan.task?.method || null\n  }\n};\n\nreturn cleaned;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "07e7a34e-7f5d-41f6-8b9c-d9b94a933094",
+      "name": "Clean Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Store website Url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store website Url": {
+      "main": [
+        [
+          {
+            "node": "Website Privacy Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website Privacy Scan": {
+      "main": [
+        [
+          {
+            "node": "Wait for scan completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get scan results": {
+      "main": [
+        [
+          {
+            "node": "Clean Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Generate Privacy Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Privacy Report": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for scan completion": {
+      "main": [
+        [
+          {
+            "node": "store scan ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store scan ID": {
+      "main": [
+        [
+          {
+            "node": "Get scan results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d74393b7-81ce-4098-8ec5-9e2285e24578",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5dbb6ed6404b23e1cf9eed3e6b414c9f9a8f047b022a868f940d67c2147db2b7"
+  },
+  "id": "qvHUxg1OQWdeBUJw",
+  "tags": []
+}
